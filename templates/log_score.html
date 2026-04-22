@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Log Score - FitPulse{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="back-link">
+        <a href="{{ url_for('admin') }}"><i class="fas fa-arrow-left"></i> Back to Admin</a>
+    </div>
+
+    <div class="form-container">
+        <div class="form-card">
+            <h1 class="form-title"><i class="fas fa-chart-line"></i> Log Score</h1>
+            <p class="form-subtitle">Record a participant's score for a challenge</p>
+            
+            <form method="POST" class="admin-form">
+                {{ form.hidden_tag() }}
+                
+                <div class="form-group">
+                    {{ form.challenge_id.label(class="form-label") }}
+                    {{ form.challenge_id(class="form-control") }}
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        {{ form.user_email.label(class="form-label") }}
+                        {{ form.user_email(class="form-control", placeholder="user@cars24.com") }}
+                    </div>
+                    <div class="form-group">
+                        {{ form.value.label(class="form-label") }}
+                        {{ form.value(class="form-control", placeholder="0") }}
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <a href="{{ url_for('admin') }}" class="btn btn-outline">Cancel</a>
+                    {{ form.submit(class="btn btn-primary") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.back-link { margin-bottom: 24px; }
+.back-link a {
+    color: var(--text-secondary); text-decoration: none; font-size: 14px;
+    display: inline-flex; align-items: center; gap: 8px; transition: color 0.15s;
+}
+.back-link a:hover { color: var(--primary-color); }
+.form-container { max-width: 640px; margin: 0 auto; }
+.form-card {
+    background: var(--bg-tertiary); border: 1px solid var(--border-color-light);
+    border-radius: var(--border-radius); padding: 40px;
+}
+.form-title { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+.form-title i { color: var(--primary-color); margin-right: 8px; }
+.form-subtitle { color: var(--text-secondary); font-size: 14px; margin-bottom: 32px; }
+.form-group { margin-bottom: 20px; }
+.form-label {
+    display: block; font-size: 12px; font-weight: 600; letter-spacing: 0.8px;
+    text-transform: uppercase; color: var(--text-secondary); margin-bottom: 8px;
+}
+.form-control {
+    width: 100%; padding: 12px 16px; border: 1px solid var(--border-color-light);
+    border-radius: var(--border-radius-xs); background: var(--bg-secondary);
+    color: var(--text-primary); font-size: 14px; font-family: inherit; transition: border-color 0.15s;
+}
+.form-control:focus { outline: none; border-color: var(--primary-color); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 12px; }
+@media (max-width: 640px) { .form-card { padding: 24px; } .form-row { grid-template-columns: 1fr; } }
+</style>
+{% endblock %}

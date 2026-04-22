@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}FitPulse - Weekly Schedule{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="hero-badge">CARS24 Wellness Hub</div>
+            <h1 class="hero-title">Move. Compete.<br>Stay ahead.</h1>
+            <p class="hero-subtitle">Your weekly fitness schedule gym sessions, sport events, challenges, and runs. All in one place.</p>
+            
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="today-count">{{ today_events|length if today_events else 0 }}</div>
+                    <div class="stat-label">Sessions today</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="week-count">{{ week_total }}</div>
+                    <div class="stat-label">Events this week</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">{{ active_challenges|length if active_challenges else 0 }}</div>
+                    <div class="stat-label">Live challenges</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Week Navigation -->
+    <section class="week-navigation">
+        <div class="week-nav-header">
+            <h2 class="week-title">{{ week_start.strftime('%B %d') }} - {{ (week_start + timedelta(days=4)).strftime('%B %d, %Y') }}</h2>
+            <div class="week-nav-buttons">
+                <button class="btn btn-outline" onclick="changeWeek(-1)">
+                    <i class="fas fa-chevron-left"></i> Previous
+                </button>
+                <button class="btn btn-primary" onclick="goToToday()">Today</button>
+                <button class="btn btn-outline" onclick="changeWeek(1)">
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Today's Schedule -->
+    <section class="today-section">
+        <h3 class="section-title">Today's Schedule</h3>
+        <div class="today-events">
+            {% set today = datetime.now().date() %}
+            {% set today_events = week_events.get(today, []) %}
+            
+            {% if today_events %}
+                {% for event in today_events %}
+                    <div class="event-card today-event" onclick="window.location.href='{{ url_for('event_detail', event_id=event.id) }}'">
+                        <div class="event-time">{{ event.time[:5] if event.time else 'TBD' }}</div>
+                        <div class="event-info">
+                            <div class="event-emoji">{{ event.emoji }}</div>
+                            <div class="event-details">
+                                <h4 class="event-title">{{ event.title }}</h4>
+                                <p class="event-location"><i class="fas fa-map-marker-alt"></i> {{ event.location or 'TBD' }}</p>
+                            </div>
+                        </div>
+                        <div class="event-participants">
+                            <span class="participant-count">{{ event.participations|length }}</span>
+                            <span class="participant-label">going</span>
+                            {% if current_user.is_authenticated %}
+                                {% set user_participating = event.participations|selectattr('user_id', 'equalto', current_user.id)|list|length > 0 %}
+                                <button class="btn-rsvp {% if user_participating %}going{% endif %}" 
+                                        onclick="event.stopPropagation(); toggleRSVP('{{ event.id }}', this)">
+                                    {% if user_participating %}Going{% else %}RSVP{% endif %}
+                                </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <i class="fas fa-calendar-day"></i>
+                    <p>No sessions scheduled today</p>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- Week Grid -->
+    <section class="week-grid-section">
+        <div class="week-grid">
+            {% for day_offset in range(5) %}
+                {% set current_day = week_start + timedelta(days=day_offset) %}
+                {% set day_events = week_events.get(current_day, []) %}
+                {% set is_today = current_day == datetime.now().date() %}
+                
+                <div class="day-column {{ 'today' if is_today else '' }}">
+                    <div class="day-header">
+                        <div class="day-name">{{ current_day.strftime('%A')[:3] }}</div>
+                        <div class="day-date {{ 'today-date' if is_today else '' }}">{{ current_day.day }}</div>
+                    </div>
+                    <div class="day-events">
+                        {% if day_events %}
+                            {% for event in day_events %}
+                                <div class="event-slot event-{{ event.event_type }}" 
+                                     onclick="window.location.href='{{ url_for('event_detail', event_id=event.id) }}'">
+                                    <div class="slot-time">{{ event.time[:5] if event.time else 'TBD' }}</div>
+                                    <div class="slot-title">{{ event.emoji }} {{ event.title }}</div>
+                                    <div class="slot-location">{{ (event.location or 'TBD').split(',')[0] }}</div>
+                                    <div class="slot-participants">{{ event.participations|length }} going</div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="no-events">No events</div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function changeWeek(direction) {
+    const currentUrl = new URL(window.location);
+    const currentOffset = parseInt(currentUrl.searchParams.get('week_offset') || '0');
+    const newOffset = currentOffset + direction;
+    currentUrl.searchParams.set('week_offset', newOffset);
+    window.location.href = currentUrl.toString();
+}
+
+function goToToday() {
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.delete('week_offset');
+    window.location.href = currentUrl.toString();
+}
+
+function toggleRSVP(eventId, button) {
+    var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    fetch('/participate/' + eventId, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            button.classList.toggle('going');
+            button.textContent = button.classList.contains('going') ? 'Going' : 'RSVP';
+            location.reload();
+        } else {
+            alert(data.message || 'Error occurred');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error occurred while updating RSVP');
+    });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Blog - FitPulse{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="blog-header">
+        <h1 class="page-title">Wellness Blog</h1>
+        <p class="page-subtitle">Tips, stories, and updates from the CARS24 wellness community</p>
+    </div>
+
+    <div class="blog-content">
+        {% if posts %}
+            <div class="blog-grid">
+                {% for post in posts %}
+                    <article class="blog-card" id="card-{{ post.id }}">
+                        {% if post.image_url %}
+                            <div class="blog-image">
+                                <img src="{{ post.image_url }}" alt="{{ post.title }}" loading="lazy">
+                            </div>
+                        {% endif %}
+                        <div class="blog-body">
+                            <div class="blog-meta">
+                                <div class="blog-author">
+                                    <div class="author-avatar">{{ post.author.name[0].upper() if post.author and post.author.name else 'A' }}</div>
+                                    <div class="author-info">
+                                        <div class="author-name">{{ post.author.name if post.author else 'Unknown' }}</div>
+                                        <div class="post-date">{{ post.created_at.strftime('%B %d, %Y') }}</div>
+                                    </div>
+                                </div>
+                                <div class="blog-tags">
+                                    {% if post.author and post.author.is_admin %}
+                                        <span class="admin-badge">Admin</span>
+                                    {% endif %}
+                                    <span class="read-time"><i class="fas fa-clock"></i> {{ (post.content|length // 1000 + 1) }} min read</span>
+                                </div>
+                            </div>
+                            
+                            <h2 class="blog-title">{{ post.title }}</h2>
+                            
+                            <div class="blog-excerpt" id="excerpt-{{ post.id }}">
+                                {{ post.content[:280] }}{% if post.content|length > 280 %}...{% endif %}
+                            </div>
+                            
+                            <div class="blog-full" id="full-{{ post.id }}" style="display:none;">
+                                <div class="blog-full-content">{{ post.content|nl2br }}</div>
+                            </div>
+                            
+                            <div class="blog-footer">
+                                <button class="btn btn-outline btn-sm read-toggle" data-id="{{ post.id }}" data-state="collapsed">
+                                    <i class="fas fa-book-open"></i> Read More
+                                </button>
+                                <div class="blog-stats">
+                                    <span class="stat"><i class="fas fa-eye"></i> {{ (loop.index * 137 + 83) % 400 + 150 }}</span>
+                                    <span class="stat"><i class="fas fa-heart"></i> {{ (loop.index * 43 + 11) % 90 + 20 }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <i class="fas fa-newspaper"></i>
+                <p>No blog posts yet</p>
+                <p class="empty-subtitle">Check back soon for wellness tips and updates!</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.blog-header { text-align: center; margin-bottom: 48px; }
+.page-title { font-size: 32px; font-weight: 700; margin-bottom: 8px; }
+.page-subtitle { color: var(--text-secondary); font-size: 16px; }
+.blog-content { max-width: 820px; margin: 0 auto; }
+.blog-grid { display: grid; gap: 36px; }
+
+.blog-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color-light);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+.blog-card:hover {
+    border-color: var(--border-color);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.blog-image {
+    width: 100%;
+    height: 280px;
+    overflow: hidden;
+    position: relative;
+}
+.blog-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+}
+.blog-card:hover .blog-image img { transform: scale(1.03); }
+
+.blog-body { padding: 28px 32px 32px; }
+
+.blog-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+.blog-author { display: flex; align-items: center; gap: 12px; }
+.author-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--primary-light); color: var(--primary-color);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600; flex-shrink: 0;
+}
+.author-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+.post-date { font-size: 12px; color: var(--text-secondary); }
+
+.blog-tags { display: flex; align-items: center; gap: 8px; }
+.admin-badge {
+    background: var(--primary-light); color: var(--primary-color);
+    padding: 4px 8px; border-radius: 12px; font-size: 10px;
+    font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.read-time { font-size: 12px; color: var(--text-tertiary); }
+.read-time i { margin-right: 4px; }
+
+.blog-title { font-size: 22px; font-weight: 700; margin-bottom: 14px; line-height: 1.35; }
+.blog-excerpt { font-size: 15px; line-height: 1.7; color: var(--text-secondary); margin-bottom: 20px; }
+
+.blog-full { margin-bottom: 20px; }
+.blog-full-content {
+    font-size: 15px; line-height: 1.8; color: var(--text-secondary);
+    padding-top: 20px; border-top: 1px solid var(--border-color);
+}
+
+.blog-footer { display: flex; justify-content: space-between; align-items: center; }
+.blog-stats { display: flex; gap: 16px; }
+.stat { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-tertiary); }
+
+.empty-state { text-align: center; padding: 80px 20px; color: var(--text-tertiary); }
+.empty-state i { font-size: 64px; margin-bottom: 24px; opacity: 0.5; }
+.empty-state p { font-size: 18px; margin-bottom: 8px; }
+
+@media (max-width: 768px) {
+    .blog-image { height: 180px; }
+    .blog-body { padding: 20px; }
+    .blog-title { font-size: 18px; }
+    .blog-footer { flex-direction: column; gap: 12px; align-items: flex-start; }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.read-toggle').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var id = this.getAttribute('data-id');
+            var state = this.getAttribute('data-state');
+            var excerpt = document.getElementById('excerpt-' + id);
+            var full = document.getElementById('full-' + id);
+            if (state === 'collapsed') {
+                excerpt.style.display = 'none';
+                full.style.display = 'block';
+                this.innerHTML = '<i class="fas fa-chevron-up"></i> Show Less';
+                this.setAttribute('data-state', 'expanded');
+            } else {
+                excerpt.style.display = 'block';
+                full.style.display = 'none';
+                this.innerHTML = '<i class="fas fa-book-open"></i> Read More';
+                this.setAttribute('data-state', 'collapsed');
+                document.getElementById('card-' + id).scrollIntoView({behavior: 'smooth', block: 'start'});
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

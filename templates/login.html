@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In - FitPulse{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <span class="logo">Fit<span>Pulse</span></span>
+                </div>
+                <h1 class="auth-title">Join FitPulse</h1>
+                <p class="auth-subtitle">Sign in with your CARS24 email to RSVP for sessions and appear on the leaderboard.</p>
+            </div>
+            
+            <form method="POST" class="auth-form">
+                {{ form.hidden_tag() }}
+                
+                <div class="form-group">
+                    {{ form.email.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.email(class="form-control", placeholder="name@cars24.com") }}
+                    </div>
+                    {% if form.email.errors %}
+                        <div class="form-error">
+                            {% for error in form.email.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="form-group">
+                    {{ form.password.label(class="form-label") }}
+                    <div class="input-group">
+                        {{ form.password(class="form-control", placeholder="Enter your password", type="password") }}
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                    {% if form.password.errors %}
+                        <div class="form-error">
+                            {% for error in form.password.errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="auth-hint">
+                    <p>Only <strong>@cars24.com</strong> or <strong>@cariotauto.com</strong> emails are accepted.</p>
+                    <p>Sign in as <strong>admin@cars24.com</strong> for admin access.</p>
+                    <p>Your credentials will be saved to Google Drive for easy future access.</p>
+                    <p><a href="{{ url_for('forgot_password') }}" style="color: var(--primary-color);">Forgot password?</a></p>
+                </div>
+            </form>
+        </div>
+        
+        <div class="auth-features">
+            <div class="feature-item">
+                <i class="fas fa-calendar-check"></i>
+                <h3>Track Events</h3>
+                <p>RSVP to gym sessions, sports events, and challenges</p>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-trophy"></i>
+                <h3>Compete</h3>
+                <p>Join challenges and climb the leaderboard</p>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-users"></i>
+                <h3>Community</h3>
+                <p>Connect with colleagues and stay motivated</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.auth-container {
+    max-width: 1200px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    align-items: center;
+    min-height: calc(100vh - 200px);
+}
+
+.auth-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color-light);
+    border-radius: var(--border-radius);
+    padding: 40px;
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.auth-logo {
+    margin-bottom: 16px;
+}
+
+.auth-title {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.auth-subtitle {
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.auth-form {
+    margin-bottom: 24px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.input-group {
+    display: flex;
+    gap: 8px;
+}
+
+.form-control {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid var(--border-color-light);
+    border-radius: var(--border-radius-xs);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: border-color 0.15s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.form-error {
+    color: var(--accent-red);
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.auth-hint {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-xs);
+    padding: 16px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.auth-hint strong {
+    color: var(--primary-color);
+}
+
+.auth-features {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.feature-item {
+    text-align: center;
+    padding: 24px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color-light);
+    border-radius: var(--border-radius);
+    transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.feature-item:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-color);
+}
+
+.feature-item i {
+    font-size: 32px;
+    color: var(--primary-color);
+    margin-bottom: 12px;
+}
+
+.feature-item h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.feature-item p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+    .auth-container {
+        grid-template-columns: 1fr;
+        gap: 32px;
+    }
+    
+    .auth-card {
+        padding: 32px 24px;
+    }
+    
+    .auth-features {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+}
+</style>
+{% endblock %}

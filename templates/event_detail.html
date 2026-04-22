@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+
+{% block title %}{{ event.title }} - FitPulse{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="back-link">
+        <a href="{{ url_for('index') }}"><i class="fas fa-arrow-left"></i> Back to Schedule</a>
+    </div>
+
+    <div class="event-detail-grid">
+        <div class="event-main">
+            <div class="event-detail-card">
+                <div class="event-badge event-{{ event.event_type }}">
+                    {{ event.event_type.title() }}
+                </div>
+                
+                <div class="event-emoji-large">{{ event.emoji }}</div>
+                <h1 class="event-detail-title">{{ event.title }}</h1>
+                
+                <div class="event-meta-list">
+                    <div class="meta-item">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>{{ event.date.strftime('%A, %B %d, %Y') }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fas fa-clock"></i>
+                        <span>{{ event.time[:5] if event.time else 'TBD' }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>{{ event.location or 'TBD' }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fas fa-{% if event.is_recurring %}sync{% else %}thumbtack{% endif %}"></i>
+                        <span>{% if event.is_recurring %}Recurring weekly{% else %}One-off event{% endif %}</span>
+                    </div>
+                </div>
+                
+                {% if event.description %}
+                    <div class="event-description">
+                        <h3>About this event</h3>
+                        <p>{{ event.description }}</p>
+                    </div>
+                {% endif %}
+                
+                <div class="event-actions">
+                    {% if current_user.is_authenticated %}
+                        <form method="POST" action="{{ url_for('participate', event_id=event.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            {% if user_participation %}
+                                <button type="submit" class="btn btn-outline btn-lg">
+                                    <i class="fas fa-check"></i> Going — Click to Cancel
+                                </button>
+                            {% else %}
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-hand-paper"></i> I'm In!
+                                </button>
+                            {% endif %}
+                        </form>
+                    {% else %}
+                        <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-sign-in-alt"></i> Sign In to RSVP
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="event-sidebar">
+            <div class="participants-card">
+                <h3 class="sidebar-title">
+                    <i class="fas fa-users"></i>
+                    Going ({{ participations|length }})
+                </h3>
+                
+                {% if participations %}
+                    <div class="participants-list">
+                        {% for p in participations %}
+                            <div class="participant-item">
+                                <div class="p-avatar">{{ p.user.name[0].upper() if p.user and p.user.name else 'U' }}</div>
+                                <div class="p-info">
+                                    <div class="p-name">{{ p.user.name if p.user else 'Unknown User' }}</div>
+                                    <div class="p-date">Joined {{ p.registered_at.strftime('%b %d') }}</div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-participants">
+                        <p>No RSVPs yet — be the first!</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.back-link {
+    margin-bottom: 24px;
+}
+
+.back-link a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.15s;
+}
+
+.back-link a:hover {
+    color: var(--primary-color);
+}
+
+.event-detail-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 32px;
+}
+
+.event-detail-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color-light);
+    border-radius: var(--border-radius);
+    padding: 40px;
+}
+
+.event-badge {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 16px;
+}
+
+.event-emoji-large {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.event-detail-title {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    line-height: 1.2;
+}
+
+.event-meta-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 32px;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 15px;
+    color: var(--text-secondary);
+}
+
+.meta-item i {
+    width: 20px;
+    text-align: center;
+    color: var(--primary-color);
+}
+
+.event-description {
+    margin-bottom: 32px;
+}
+
+.event-description h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.event-description p {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+}
+
+.event-actions {
+    margin-top: 32px;
+}
+
+.btn-lg {
+    padding: 14px 28px;
+    font-size: 16px;
+    border-radius: 12px;
+}
+
+.participants-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color-light);
+    border-radius: var(--border-radius);
+    padding: 24px;
+    position: sticky;
+    top: 80px;
+}
+
+.sidebar-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sidebar-title i {
+    color: var(--primary-color);
+}
+
+.participants-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.participant-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-xs);
+}
+
+.p-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--primary-light);
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.p-name {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.p-date {
+    font-size: 11px;
+    color: var(--text-tertiary);
+}
+
+.empty-participants {
+    text-align: center;
+    padding: 24px;
+    color: var(--text-tertiary);
+    font-size: 14px;
+}
+
+@media (max-width: 768px) {
+    .event-detail-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .event-detail-card {
+        padding: 24px;
+    }
+    
+    .event-detail-title {
+        font-size: 24px;
+    }
+    
+    .participants-card {
+        position: static;
+    }
+}
+</style>
+{% endblock %}

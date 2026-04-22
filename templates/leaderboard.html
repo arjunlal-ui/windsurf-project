@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+
+{% block title %}Leaderboard - FitPulse{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<div class="container">
+    <div class="lb-header">
+        <h1 class="page-title">Leaderboards & Challenges</h1>
+        <p class="page-subtitle">Track your progress and compete with colleagues</p>
+    </div>
+
+    <!-- Active Challenges -->
+    <section class="lb-section">
+        <h2 class="section-title"><i class="fas fa-medal"></i> Active Challenges</h2>
+        <div class="challenges-row">
+            {% for challenge in challenges %}
+                <a href="{{ url_for('challenge_detail', challenge_id=challenge.id) }}" class="ch-card">
+                    <div class="ch-top">
+                        <span class="type-badge">{{ challenge.challenge_type.title() }}</span>
+                        <span class="ch-dates">{{ challenge.start_date.strftime('%b %d') }} – {{ challenge.end_date.strftime('%b %d') }}</span>
+                    </div>
+                    <h3>{{ challenge.name }}</h3>
+                    <p class="ch-desc">{% if challenge.description %}{{ challenge.description[:90] }}{% if challenge.description|length > 90 %}...{% endif %}{% else %}No description{% endif %}</p>
+                    <div class="ch-bottom">
+                        <div class="ch-stat"><strong>{{ challenge.scores|length }}</strong><span>participants</span></div>
+                        <div class="ch-stat"><strong>{% if challenge.scores %}{{ challenge.scores|map(attribute='value')|list|maxval|int }}{% else %}0{% endif %}</strong><span>top score</span></div>
+                    </div>
+                    <div class="ch-bar">
+                        {% set pct = [challenge.scores|length * 10, 100]|min %}
+                        <div class="ch-bar-fill" style="width:{{ pct }}%"></div>
+                    </div>
+                </a>
+            {% endfor %}
+            {% if not challenges %}
+                <div class="empty-state"><i class="fas fa-trophy"></i><p>No active challenges yet</p></div>
+            {% endif %}
+        </div>
+    </section>
+
+    <!-- Charts Row -->
+    <section class="charts-row">
+        <div class="chart-card">
+            <h3><i class="fas fa-chart-bar"></i> Weekly Participation</h3>
+            <canvas id="weeklyChart" height="220"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3><i class="fas fa-chart-line"></i> Monthly Trends</h3>
+            <canvas id="monthlyChart" height="220"></canvas>
+        </div>
+    </section>
+
+    <!-- Rankings -->
+    <section class="rankings-row">
+        <!-- Challenge Score Rankings -->
+        <div class="rank-card">
+            <div class="rank-tabs">
+                <button class="rtab active" data-panel="scores-panel">Challenge Scores</button>
+                <button class="rtab" data-panel="events-panel">Event Attendance</button>
+            </div>
+            <div id="scores-panel" class="rank-panel active">
+                {% if top_scores %}
+                    {% for entry in top_scores %}
+                        <div class="rank-row {% if loop.index <= 3 %}top{% endif %}">
+                            <div class="rank-pos">
+                                {% if loop.index == 1 %}<span class="medal gold">1</span>
+                                {% elif loop.index == 2 %}<span class="medal silver">2</span>
+                                {% elif loop.index == 3 %}<span class="medal bronze">3</span>
+                                {% else %}<span class="rank-num">{{ loop.index }}</span>{% endif %}
+                            </div>
+                            <div class="rank-avatar">{{ entry.user.name[0].upper() if entry.user and entry.user.name else 'U' }}</div>
+                            <div class="rank-info">
+                                <div class="rank-name">{{ entry.user.name if entry.user else 'Unknown' }}</div>
+                                <div class="rank-email">{{ entry.user.email if entry.user else '' }}</div>
+                            </div>
+                            <div class="rank-score">{{ entry.total|int }}<span>pts</span></div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state sm"><i class="fas fa-chart-line"></i><p>No scores yet</p></div>
+                {% endif %}
+            </div>
+            <div id="events-panel" class="rank-panel">
+                {% if event_rankings %}
+                    {% for entry in event_rankings %}
+                        <div class="rank-row {% if loop.index <= 3 %}top{% endif %}">
+                            <div class="rank-pos">
+                                {% if loop.index == 1 %}<span class="medal gold">1</span>
+                                {% elif loop.index == 2 %}<span class="medal silver">2</span>
+                                {% elif loop.index == 3 %}<span class="medal bronze">3</span>
+                                {% else %}<span class="rank-num">{{ loop.index }}</span>{% endif %}
+                            </div>
+                            <div class="rank-avatar">{{ entry.user.name[0].upper() if entry.user and entry.user.name else 'U' }}</div>
+                            <div class="rank-info">
+                                <div class="rank-name">{{ entry.user.name if entry.user else 'Unknown' }}</div>
+                                <div class="rank-sub">{{ entry.attended }} attended / {{ entry.count }} RSVPs</div>
+                            </div>
+                            <div class="rank-score">{{ entry.count }}<span>events</span></div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="empty-state sm"><i class="fas fa-calendar-check"></i><p>No participation data</p></div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Past Events Calendar -->
+        <div class="rank-card cal-card">
+            <h3><i class="fas fa-calendar-alt"></i> Past Events</h3>
+            <div class="cal-list">
+                {% set ns = namespace(prev_month='') %}
+                {% for event in past_events %}
+                    {% set evt_month = event.date.strftime('%B %Y') %}
+                    {% if evt_month != ns.prev_month %}
+                        {% if not loop.first %}</div>{% endif %}
+                        <div class="cal-month-header" onclick="this.nextElementSibling.classList.toggle('collapsed'); this.querySelector('.cal-chevron').classList.toggle('rotated')">
+                            <span>{{ evt_month }}</span>
+                            <i class="fas fa-chevron-down cal-chevron"></i>
+                        </div>
+                        <div class="cal-month-events">
+                        {% set ns.prev_month = evt_month %}
+                    {% endif %}
+                    <div class="cal-event">
+                        <div class="cal-date">
+                            <div class="cal-day">{{ event.date.strftime('%d') }}</div>
+                            <div class="cal-weekday">{{ event.date.strftime('%a') }}</div>
+                        </div>
+                        <div class="cal-details">
+                            <div class="cal-title">{{ event.emoji }} {{ event.title }}</div>
+                            <div class="cal-meta">{{ event.time[:5] if event.time else 'TBD' }} · {{ (event.location or 'TBD').split(',')[0] }} · <strong>{{ event.participations|length }}</strong> went</div>
+                        </div>
+                    </div>
+                {% endfor %}
+                {% if past_events %}</div>{% endif %}
+                {% if not past_events %}
+                    <div class="empty-state sm"><i class="fas fa-calendar-times"></i><p>No past events</p></div>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.lb-header { text-align:center; margin-bottom:40px; }
+.page-title { font-size:32px; font-weight:700; margin-bottom:8px; }
+.page-subtitle { color:var(--text-secondary); font-size:16px; }
+.lb-section { margin-bottom:36px; }
+.section-title { font-size:20px; font-weight:700; margin-bottom:20px; display:flex; align-items:center; gap:10px; }
+.section-title i { color:var(--primary-color); }
+
+/* Challenges row */
+.challenges-row { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; }
+.ch-card {
+    background:var(--bg-tertiary); border:1px solid var(--border-color-light);
+    border-radius:var(--border-radius); padding:22px; text-decoration:none;
+    color:inherit; transition:all .18s ease; display:block;
+}
+.ch-card:hover { border-color:var(--primary-color); transform:translateY(-3px); box-shadow:0 6px 20px rgba(0,0,0,.2); }
+.ch-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.type-badge {
+    background:var(--primary-light); color:var(--primary-color);
+    padding:4px 8px; border-radius:12px; font-size:10px; font-weight:600;
+    text-transform:uppercase; letter-spacing:.5px;
+}
+.ch-dates { font-size:11px; color:var(--text-tertiary); }
+.ch-card h3 { font-size:16px; font-weight:600; margin-bottom:8px; }
+.ch-desc { font-size:13px; color:var(--text-secondary); line-height:1.5; margin-bottom:14px; }
+.ch-bottom { display:flex; gap:24px; margin-bottom:12px; }
+.ch-stat strong { display:block; font-size:18px; color:var(--primary-color); }
+.ch-stat span { font-size:10px; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:.5px; }
+.ch-bar { height:4px; background:var(--bg-quaternary); border-radius:2px; overflow:hidden; }
+.ch-bar-fill { height:100%; background:linear-gradient(90deg,#7ed321,#b5f23c); border-radius:2px; }
+
+/* Charts */
+.charts-row { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:36px; }
+.chart-card {
+    background:var(--bg-tertiary); border:1px solid var(--border-color-light);
+    border-radius:var(--border-radius); padding:24px;
+}
+.chart-card h3 { font-size:16px; font-weight:600; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+.chart-card h3 i { color:var(--primary-color); }
+
+/* Rankings */
+.rankings-row { display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:36px; }
+.rank-card {
+    background:var(--bg-tertiary); border:1px solid var(--border-color-light);
+    border-radius:var(--border-radius); padding:24px;
+}
+.rank-card h3 { font-size:16px; font-weight:600; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+.rank-card h3 i { color:var(--primary-color); }
+.rank-tabs { display:flex; gap:6px; margin-bottom:18px; }
+.rtab {
+    padding:7px 14px; border:1px solid var(--border-color-light);
+    background:transparent; color:var(--text-secondary); border-radius:var(--border-radius-xs);
+    font-size:12px; font-weight:500; cursor:pointer; transition:all .15s;
+}
+.rtab:hover { color:var(--text-primary); }
+.rtab.active { background:var(--primary-light); border-color:var(--primary-color); color:var(--primary-color); }
+.rank-panel { display:none; }
+.rank-panel.active { display:block; }
+
+.rank-row {
+    display:flex; align-items:center; gap:12px; padding:12px;
+    background:var(--bg-secondary); border:1px solid var(--border-color);
+    border-radius:var(--border-radius-xs); margin-bottom:8px; transition:background .15s;
+}
+.rank-row:hover { background:var(--bg-quaternary); }
+.rank-row.top { border-color:rgba(181,242,60,.15); }
+.rank-pos { width:32px; text-align:center; flex-shrink:0; }
+.medal {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:26px; height:26px; border-radius:50%; font-size:11px; font-weight:700;
+}
+.medal.gold { background:rgba(255,215,0,.15); color:#ffd700; }
+.medal.silver { background:rgba(192,192,192,.15); color:#c0c0c0; }
+.medal.bronze { background:rgba(205,127,50,.15); color:#cd7f32; }
+.rank-num { font-size:14px; font-weight:700; color:var(--text-tertiary); }
+.rank-avatar {
+    width:32px; height:32px; border-radius:50%; background:var(--primary-light);
+    color:var(--primary-color); display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:600; flex-shrink:0;
+}
+.rank-info { flex:1; min-width:0; }
+.rank-name { font-size:14px; font-weight:500; }
+.rank-email, .rank-sub { font-size:11px; color:var(--text-secondary); }
+.rank-score { font-size:18px; font-weight:700; color:var(--primary-color); text-align:right; flex-shrink:0; }
+.rank-score span { font-size:10px; color:var(--text-secondary); margin-left:3px; font-weight:500; }
+
+/* Calendar */
+.cal-card { max-height:520px; display:flex; flex-direction:column; }
+.cal-list { overflow-y:auto; flex:1; }
+.cal-month-header {
+    display:flex; justify-content:space-between; align-items:center;
+    padding:10px 14px; background:var(--bg-quaternary); border-radius:var(--border-radius-xs);
+    margin-bottom:8px; cursor:pointer; font-size:14px; font-weight:600;
+    transition:background .15s; user-select:none;
+}
+.cal-month-header:hover { background:var(--border-color); }
+.cal-chevron { transition:transform .2s; font-size:12px; }
+.cal-chevron.rotated { transform:rotate(180deg); }
+.cal-month-events { margin-bottom:12px; }
+.cal-month-events.collapsed { display:none; }
+.cal-event {
+    display:flex; gap:14px; padding:10px 12px; border-left:3px solid var(--primary-color);
+    margin-bottom:6px; margin-left:8px; transition:background .15s;
+    border-radius:0 var(--border-radius-xs) var(--border-radius-xs) 0;
+}
+.cal-event:hover { background:var(--bg-secondary); }
+.cal-date { text-align:center; flex-shrink:0; width:36px; }
+.cal-day { font-size:18px; font-weight:700; line-height:1; }
+.cal-weekday { font-size:10px; color:var(--text-tertiary); text-transform:uppercase; }
+.cal-details { flex:1; min-width:0; }
+.cal-title { font-size:13px; font-weight:500; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cal-meta { font-size:11px; color:var(--text-tertiary); }
+.cal-meta strong { color:var(--primary-color); }
+
+.empty-state { text-align:center; padding:40px 20px; color:var(--text-tertiary); }
+.empty-state.sm { padding:24px 16px; }
+.empty-state i { font-size:36px; margin-bottom:12px; opacity:.5; display:block; }
+.empty-state p { font-size:14px; }
+
+@media (max-width:768px) {
+    .charts-row, .rankings-row { grid-template-columns:1fr; }
+    .challenges-row { grid-template-columns:1fr; }
+    .rank-email { display:none; }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Tab switching
+    document.querySelectorAll('.rtab').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var card = this.closest('.rank-card');
+            card.querySelectorAll('.rtab').forEach(function(b) { b.classList.remove('active'); });
+            card.querySelectorAll('.rank-panel').forEach(function(p) { p.classList.remove('active'); });
+            this.classList.add('active');
+            document.getElementById(this.getAttribute('data-panel')).classList.add('active');
+        });
+    });
+
+    // Weekly chart
+    var wCtx = document.getElementById('weeklyChart');
+    if (wCtx) {
+        new Chart(wCtx, {
+            type: 'bar',
+            data: {
+                labels: {{ weekly_labels|safe }},
+                datasets: [{
+                    label: 'RSVPs',
+                    data: {{ weekly_data|safe }},
+                    backgroundColor: 'rgba(181,242,60,0.3)',
+                    borderColor: '#b5f23c',
+                    borderWidth: 2,
+                    borderRadius: 6,
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: '#888', font: { size: 10 } } },
+                    y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888', font: { size: 10 } } }
+                }
+            }
+        });
+    }
+
+    // Monthly chart
+    var mCtx = document.getElementById('monthlyChart');
+    if (mCtx) {
+        new Chart(mCtx, {
+            type: 'line',
+            data: {
+                labels: {{ monthly_labels|safe }},
+                datasets: [
+                    {
+                        label: 'Events',
+                        data: {{ monthly_events|safe }},
+                        borderColor: '#5cb8ff',
+                        backgroundColor: 'rgba(92,184,255,0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#5cb8ff',
+                    },
+                    {
+                        label: 'Participants',
+                        data: {{ monthly_participants|safe }},
+                        borderColor: '#b5f23c',
+                        backgroundColor: 'rgba(181,242,60,0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#b5f23c',
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { labels: { color: '#aaa', font: { size: 11 } } } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: '#888', font: { size: 10 } } },
+                    y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#888', font: { size: 10 } } }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

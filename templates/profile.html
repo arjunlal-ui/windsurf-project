@@ -1,0 +1,482 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - {{ current_user.name }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="profile-header">
+        <div class="profile-card">
+            <div class="profile-avatar">
+                <div class="avatar-circle">
+                    {{ current_user.name[0].upper() }}
+                </div>
+            </div>
+            <div class="profile-info">
+                <h1 class="profile-name">{{ current_user.name }}</h1>
+                <p class="profile-email">{{ current_user.email }}</p>
+                {% if current_user.is_admin %}
+                    <span class="admin-badge">Admin</span>
+                {% endif %}
+                <div class="profile-stats">
+                    <div class="stat">
+                        <span class="stat-value">{{ participations|length }}</span>
+                        <span class="stat-label">Events Joined</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value">{{ scores|length }}</span>
+                        <span class="stat-label">Scores Logged</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="profile-content">
+        <div class="profile-section">
+            <h2 class="section-title">Recent Activity</h2>
+            <div class="activity-tabs">
+                <button class="tab-btn active" onclick="showTab('events')">Events</button>
+                <button class="tab-btn" onclick="showTab('scores')">Scores</button>
+            </div>
+            
+            <div id="events-tab" class="tab-content active">
+                {% if participations %}
+                    <div class="activity-list">
+                        {% for participation in participations %}
+                            <div class="activity-item">
+                                <div class="activity-icon">
+                                    {{ participation.event.emoji if participation.event else '🏋️' }}
+                                </div>
+                                <div class="activity-details">
+                                    <h4>{{ participation.event.title if participation.event else 'Unknown Event' }}</h4>
+                                    <p>{{ participation.event.date.strftime('%B %d, %Y') if participation.event and participation.event.date else 'TBD' }} at {{ participation.event.time[:5] if participation.event and participation.event.time else 'TBD' }}</p>
+                                    <p class="activity-location">Location: {{ participation.event.location if participation.event else 'TBD' }}</p>
+                                </div>
+                                <div class="activity-status">
+                                    {% if participation.attended %}
+                                        <span class="status-badge attended">Attended</span>
+                                    {% else %}
+                                        <span class="status-badge registered">Registered</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-calendar-times"></i>
+                        <p>No events joined yet</p>
+                        <a href="{{ url_for('index') }}" class="btn btn-primary">Browse Events</a>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div id="scores-tab" class="tab-content">
+                {% if scores %}
+                    <div class="activity-list">
+                        {% for score in scores %}
+                            <div class="activity-item">
+                                <div class="activity-icon">
+                                    <i class="fas fa-trophy"></i>
+                                </div>
+                                <div class="activity-details">
+                                    <h4>{{ score.challenge.name }}</h4>
+                                    <p>Score: {{ score.value }} {{ score.challenge.unit }}</p>
+                                    <p class="activity-date">{{ score.recorded_at.strftime('%B %d, %Y at %I:%M %p') }}</p>
+                                </div>
+                                <div class="activity-score">
+                                    <span class="score-value">{{ score.value }}</span>
+                                    <span class="score-unit">{{ score.challenge.unit }}</span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <i class="fas fa-chart-line"></i>
+                        <p>No scores recorded yet</p>
+                        <a href="{{ url_for('leaderboard') }}" class="btn btn-primary">View Challenges</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="profile-section">
+            <h2 class="section-title">Achievements</h2>
+            <div class="achievements-grid">
+                <div class="achievement-card">
+                    <div class="achievement-icon">
+                        <i class="fas fa-medal"></i>
+                    </div>
+                    <h3>First Step</h3>
+                    <p>Joined your first event</p>
+                    {% if participations %}
+                        <div class="achievement-unlocked">
+                            <i class="fas fa-check-circle"></i> Unlocked
+                        </div>
+                    {% else %}
+                        <div class="achievement-locked">
+                            <i class="fas fa-lock"></i> Locked
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="achievement-card">
+                    <div class="achievement-icon">
+                        <i class="fas fa-fire"></i>
+                    </div>
+                    <h3>On Fire</h3>
+                    <p>Joined 5+ events</p>
+                    {% if participations|length >= 5 %}
+                        <div class="achievement-unlocked">
+                            <i class="fas fa-check-circle"></i> Unlocked
+                        </div>
+                    {% else %}
+                        <div class="achievement-locked">
+                            <i class="fas fa-lock"></i> {{ participations|length }}/5
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="achievement-card">
+                    <div class="achievement-icon">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <h3>Top Performer</h3>
+                    <p>Reached top 3 in any challenge</p>
+                    <div class="achievement-locked">
+                        <i class="fas fa-lock"></i> Keep trying!
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.profile-header {
+    margin-bottom: 40px;
+}
+
+.profile-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color-light);
+    border-radius: var(--border-radius);
+    padding: 32px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.profile-avatar {
+    flex-shrink: 0;
+}
+
+.avatar-circle {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: var(--primary-light);
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: 700;
+}
+
+.profile-info {
+    flex: 1;
+}
+
+.profile-name {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.profile-email {
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+}
+
+.admin-badge {
+    background: var(--primary-light);
+    color: var(--primary-color);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    display: inline-block;
+    margin-bottom: 16px;
+}
+
+.profile-stats {
+    display: flex;
+    gap: 32px;
+}
+
+.stat {
+    text-align: center;
+}
+
+.stat-value {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.stat-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+}
+
+.profile-content {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 32px;
+}
+
+.profile-section {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color-light);
+    border-radius: var(--border-radius);
+    padding: 24px;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 20px;
+}
+
+.activity-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.tab-btn {
+    padding: 8px 16px;
+    border: 1px solid var(--border-color-light);
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: var(--border-radius-xs);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.tab-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.tab-btn.active {
+    background: var(--primary-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.activity-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-xs);
+}
+
+.activity-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--primary-ultra-light);
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.activity-details {
+    flex: 1;
+}
+
+.activity-details h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.activity-details p {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+}
+
+.activity-location {
+    color: var(--text-tertiary) !important;
+}
+
+.activity-date {
+    color: var(--text-tertiary) !important;
+}
+
+.activity-status {
+    flex-shrink: 0;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-badge.attended {
+    background: rgba(181, 242, 60, 0.1);
+    color: var(--primary-color);
+}
+
+.status-badge.registered {
+    background: rgba(92, 184, 255, 0.1);
+    color: var(--accent-blue);
+}
+
+.activity-score {
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.score-value {
+    display: block;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.score-unit {
+    font-size: 10px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.achievements-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+
+.achievement-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-xs);
+    padding: 16px;
+    text-align: center;
+}
+
+.achievement-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--primary-ultra-light);
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    margin: 0 auto 12px;
+}
+
+.achievement-card h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.achievement-card p {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.achievement-unlocked {
+    color: var(--primary-color);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.achievement-locked {
+    color: var(--text-tertiary);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .profile-card {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .profile-stats {
+        justify-content: center;
+    }
+    
+    .profile-content {
+        grid-template-columns: 1fr;
+    }
+    
+    .activity-item {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+</style>
+
+<script>
+function showTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Remove active class from all buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected tab
+    document.getElementById(tabName + '-tab').classList.add('active');
+    
+    // Add active class to clicked button
+    event.target.classList.add('active');
+}
+</script>
+{% endblock %}

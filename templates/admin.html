@@ -1,0 +1,484 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel - FitPulse{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="admin-header">
+        <h1 class="page-title">Admin Panel</h1>
+        <p class="page-subtitle">Manage events, challenges, and track user participation</p>
+    </div>
+
+    <div class="admin-stats">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-calendar"></i>
+            </div>
+            <div class="stat-info">
+                <div class="stat-value">{{ events|length }}</div>
+                <div class="stat-label">Total Events</div>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-trophy"></i>
+            </div>
+            <div class="stat-info">
+                <div class="stat-value">{{ challenges|length }}</div>
+                <div class="stat-label">Challenges</div>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-info">
+                <div class="stat-value">{{ users|length }}</div>
+                <div class="stat-label">Users</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-actions">
+        <div class="action-section">
+            <h2 class="section-title">Quick Actions</h2>
+            <div class="action-grid">
+                <a href="{{ url_for('create_event') }}" class="action-card">
+                    <div class="action-icon">
+                        <i class="fas fa-plus-circle"></i>
+                    </div>
+                    <h3>Create Event</h3>
+                    <p>Add a new gym session or sports event</p>
+                </a>
+                
+                <a href="{{ url_for('create_challenge') }}" class="action-card">
+                    <div class="action-icon">
+                        <i class="fas fa-medal"></i>
+                    </div>
+                    <h3>Create Challenge</h3>
+                    <p>Set up a new fitness challenge</p>
+                </a>
+                
+                <a href="{{ url_for('log_score') }}" class="action-card">
+                    <div class="action-icon">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3>Log Score</h3>
+                    <p>Record scores for challenges</p>
+                </a>
+                
+                <a href="{{ url_for('admin_blog') }}" class="action-card">
+                    <div class="action-icon">
+                        <i class="fas fa-blog"></i>
+                    </div>
+                    <h3>Write Blog</h3>
+                    <p>Publish wellness tips and news</p>
+                </a>
+            </div>
+        </div>
+
+        <div class="data-section">
+            <div class="data-tabs">
+                <button class="tab-btn active" onclick="showDataTab('events')">Recent Events</button>
+                <button class="tab-btn" onclick="showDataTab('challenges')">Challenges</button>
+                <button class="tab-btn" onclick="showDataTab('users')">Users</button>
+            </div>
+            
+            <div id="events-tab" class="data-tab active">
+                <div class="data-list">
+                    {% for event in events %}
+                        <div class="data-item">
+                            <div class="data-icon">
+                                {{ event.emoji }}
+                            </div>
+                            <div class="data-details">
+                                <h4>{{ event.title }}</h4>
+                                <p>{{ event.date.strftime('%B %d, %Y') }} at {{ event.time[:5] if event.time else 'TBD' }}</p>
+                                <p class="data-meta">{{ event.location }} · {{ event.participations|length }} participants</p>
+                            </div>
+                            <div class="data-actions">
+                                <a href="{{ url_for('event_detail', event_id=event.id) }}" class="btn btn-outline btn-sm">View</a>
+                                <form method="POST" action="{{ url_for('delete_event', event_id=event.id) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this event?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                </form>
+                            </div>
+                        </div>
+                    {% endfor %}
+                    
+                    {% if not events %}
+                        <div class="empty-state">
+                            <i class="fas fa-calendar-times"></i>
+                            <p>No events created yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div id="challenges-tab" class="data-tab">
+                <div class="data-list">
+                    {% for challenge in challenges %}
+                        <div class="data-item">
+                            <div class="data-icon">
+                                <i class="fas fa-trophy"></i>
+                            </div>
+                            <div class="data-details">
+                                <h4>{{ challenge.name }}</h4>
+                                <p>{{ challenge.start_date.strftime('%B %d') }} - {{ challenge.end_date.strftime('%B %d') }}</p>
+                                <p class="data-meta">{{ challenge.challenge_type.title() }} · {{ challenge.scores|length }} scores</p>
+                            </div>
+                            <div class="data-actions">
+                                <a href="{{ url_for('challenge_detail', challenge_id=challenge.id) }}" class="btn btn-outline btn-sm">View</a>
+                            </div>
+                        </div>
+                    {% endfor %}
+                    
+                    {% if not challenges %}
+                        <div class="empty-state">
+                            <i class="fas fa-medal"></i>
+                            <p>No challenges created yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div id="users-tab" class="data-tab">
+                <div class="data-list">
+                    {% for user in users %}
+                        <div class="data-item">
+                            <div class="data-icon">
+                                <div class="user-avatar">{{ user.name[0].upper() }}</div>
+                            </div>
+                            <div class="data-details">
+                                <h4>{{ user.name }}</h4>
+                                <p>{{ user.email }}</p>
+                                <p class="data-meta">
+                                    Joined {{ user.created_at.strftime('%B %d, %Y') }}
+                                    {% if user.is_admin %}· Admin{% endif %}
+                                </p>
+                            </div>
+                            <div class="data-actions">
+                                <span class="user-stats">
+                                    {{ user.participations|length }} events · {{ user.scores|length }} scores
+                                </span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                    
+                    {% if not users %}
+                        <div class="empty-state">
+                            <i class="fas fa-users"></i>
+                            <p>No users registered yet</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.admin-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.page-title {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.page-subtitle {
+    color: var(--text-secondary);
+    font-size: 16px;
+}
+
+.admin-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-bottom: 40px;
+}
+
+.stat-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color-light);
+    border-radius: var(--border-radius);
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--primary-light);
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary-color);
+    display: block;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-top: 4px;
+}
+
+.admin-actions {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 32px;
+}
+
+.action-section {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color-light);
+    border-radius: var(--border-radius);
+    padding: 24px;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 20px;
+}
+
+.action-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+}
+
+.action-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-xs);
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: all 0.15s ease;
+}
+
+.action-card:hover {
+    border-color: var(--border-color-light);
+    transform: translateY(-2px);
+}
+
+.action-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--primary-light);
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.action-card h3 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.action-card p {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.data-section {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color-light);
+    border-radius: var(--border-radius);
+    padding: 24px;
+}
+
+.data-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.tab-btn {
+    padding: 8px 16px;
+    border: 1px solid var(--border-color-light);
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: var(--border-radius-xs);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.tab-btn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+.tab-btn.active {
+    background: var(--primary-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.data-tab {
+    display: none;
+}
+
+.data-tab.active {
+    display: block;
+}
+
+.data-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.data-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-xs);
+}
+
+.data-icon {
+    flex-shrink: 0;
+    font-size: 20px;
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--primary-light);
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.data-details {
+    flex: 1;
+}
+
+.data-details h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.data-details p {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+}
+
+.data-meta {
+    color: var(--text-tertiary) !important;
+    font-size: 11px !important;
+}
+
+.data-actions {
+    flex-shrink: 0;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 11px;
+}
+
+.user-stats {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-align: right;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-tertiary);
+}
+
+.empty-state i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.empty-state p {
+    font-size: 14px;
+}
+
+@media (max-width: 768px) {
+    .admin-stats {
+        grid-template-columns: 1fr;
+    }
+    
+    .admin-actions {
+        grid-template-columns: 1fr;
+    }
+    
+    .data-item {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .data-actions {
+        width: 100%;
+    }
+}
+</style>
+
+<script>
+function showDataTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.data-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Remove active class from all buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected tab
+    document.getElementById(tabName + '-tab').classList.add('active');
+    
+    // Add active class to clicked button
+    event.target.classList.add('active');
+}
+</script>
+{% endblock %}

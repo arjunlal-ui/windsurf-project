@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+
+{% block title %}{{ challenge.name }} - FitPulse{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="back-link">
+        <a href="{{ url_for('leaderboard') }}"><i class="fas fa-arrow-left"></i> Back to Leaderboard</a>
+    </div>
+
+    <div class="challenge-detail-grid">
+        <div class="challenge-main">
+            <div class="challenge-detail-card">
+                <div class="challenge-type-badge">{{ challenge.challenge_type.title() }}</div>
+                <h1 class="challenge-detail-title">{{ challenge.name }}</h1>
+                
+                <div class="challenge-meta">
+                    <div class="meta-item">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>{{ challenge.start_date.strftime('%B %d') }} - {{ challenge.end_date.strftime('%B %d, %Y') }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fas fa-ruler"></i>
+                        <span>Unit: {{ challenge.unit }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <i class="fas fa-users"></i>
+                        <span>{{ scores|length }} participants</span>
+                    </div>
+                </div>
+                
+                {% if challenge.description %}
+                    <div class="challenge-desc">
+                        <h3>About</h3>
+                        <p>{{ challenge.description }}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="challenge-sidebar">
+            <div class="leaderboard-card">
+                <h3 class="sidebar-title"><i class="fas fa-trophy"></i> Leaderboard</h3>
+                
+                {% if scores %}
+                    <div class="scores-list">
+                        {% set max_score = scores[0].value if scores and scores[0].value > 0 else 1 %}
+                        {% for score in scores %}
+                            <div class="score-row {% if loop.index <= 3 %}top-three{% endif %}">
+                                <div class="score-rank">
+                                    {% if loop.index == 1 %}
+                                        <span class="rank-medal gold">1</span>
+                                    {% elif loop.index == 2 %}
+                                        <span class="rank-medal silver">2</span>
+                                    {% elif loop.index == 3 %}
+                                        <span class="rank-medal bronze">3</span>
+                                    {% else %}
+                                        <span class="rank-num">{{ loop.index }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="score-user">
+                                    <div class="score-avatar">{{ score.user.name[0].upper() if score.user and score.user.name else 'U' }}</div>
+                                    <div class="score-info">
+                                        <div class="score-name">{{ score.user.name if score.user else 'Unknown' }}</div>
+                                        <div class="score-date">{{ score.recorded_at.strftime('%b %d') }}</div>
+                                    </div>
+                                </div>
+                                <div class="score-value-wrap">
+                                    <div class="score-bar-bg">
+                                        <div class="score-bar-fill" style="width: {{ (score.value / max_score * 100)|round(1) }}%"></div>
+                                    </div>
+                                    <span class="score-val">{{ score.value }} {{ challenge.unit }}</span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-scores">
+                        <i class="fas fa-chart-bar"></i>
+                        <p>No scores recorded yet</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+.back-link { margin-bottom: 24px; }
+.back-link a {
+    color: var(--text-secondary); text-decoration: none; font-size: 14px;
+    display: inline-flex; align-items: center; gap: 8px; transition: color 0.15s;
+}
+.back-link a:hover { color: var(--primary-color); }
+
+.challenge-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    gap: 32px;
+}
+
+.challenge-detail-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color-light);
+    border-radius: var(--border-radius);
+    padding: 32px;
+}
+
+.challenge-type-badge {
+    display: inline-block;
+    background: var(--primary-light);
+    color: var(--primary-color);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 16px;
+}
+
+.challenge-detail-title {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    line-height: 1.2;
+}
+
+.challenge-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 28px;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.meta-item i {
+    width: 18px;
+    text-align: center;
+    color: var(--primary-color);
+}
+
+.challenge-desc h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.challenge-desc p {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+}
+
+.leaderboard-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color-light);
+    border-radius: var(--border-radius);
+    padding: 24px;
+}
+
+.sidebar-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sidebar-title i { color: var(--primary-color); }
+
+.scores-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.score-row {
+    display: grid;
+    grid-template-columns: 40px 1fr 1.2fr;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-xs);
+    transition: background 0.15s;
+}
+
+.score-row:hover {
+    background: var(--bg-quaternary);
+}
+
+.score-row.top-three {
+    border-color: rgba(181, 242, 60, 0.2);
+}
+
+.score-rank { text-align: center; }
+
+.rank-medal {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.rank-medal.gold { background: rgba(255, 215, 0, 0.15); color: #ffd700; }
+.rank-medal.silver { background: rgba(192, 192, 192, 0.15); color: #c0c0c0; }
+.rank-medal.bronze { background: rgba(205, 127, 50, 0.15); color: #cd7f32; }
+
+.rank-num {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-tertiary);
+}
+
+.score-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.score-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--primary-light);
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.score-name { font-size: 14px; font-weight: 500; }
+.score-date { font-size: 11px; color: var(--text-tertiary); }
+
+.score-value-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.score-bar-bg {
+    flex: 1;
+    height: 4px;
+    background: var(--bg-quaternary);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.score-bar-fill {
+    height: 100%;
+    background: var(--primary-color);
+    border-radius: 2px;
+}
+
+.score-val {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary-color);
+    min-width: 70px;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.empty-scores {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-tertiary);
+}
+
+.empty-scores i {
+    font-size: 40px;
+    margin-bottom: 12px;
+    opacity: 0.5;
+}
+
+@media (max-width: 768px) {
+    .challenge-detail-grid { grid-template-columns: 1fr; }
+    .score-row { grid-template-columns: 32px 1fr; }
+    .score-value-wrap { display: none; }
+}
+</style>
+{% endblock %}
