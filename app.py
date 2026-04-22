@@ -28,82 +28,7 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# Google Sheets Setup (optional)
-sheets_client = None
-try:
-    import gspread
-    from google.oauth2.service_account import Credentials
-    
-    def get_google_sheets_client():
-        try:
-            scope = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
-            creds_path = os.getenv('GOOGLE_CREDS_PATH', 'credentials.json')
-            if os.path.exists(creds_path):
-                creds = Credentials.from_service_account_file(creds_path, scopes=scope)
-                return gspread.authorize(creds)
-            return None
-        except Exception as e:
-            print(f"Google Sheets error: {e}")
-            return None
-    
-    sheets_client = get_google_sheets_client()
-except ImportError:
-    print("gspread not installed. Using local database only.")
-
-def sync_to_sheet(sheet_name, row_data):
-    if sheets_client:
-        try:
-            sheet = sheets_client.open(sheet_name).sheet1
-            sheet.append_row(row_data)
-        except Exception:
-            pass
-
-def get_user_credentials_sheet():
-    """Get or create the user credentials Google Sheet"""
-    if not sheets_client:
-        return None
-    try:
-        sheet_name = "Gym Platform Users"
-        try:
-            sheet = sheets_client.open(sheet_name).sheet1
-        except gspread.SpreadsheetNotFound:
-            # Create new sheet
-            sheet = sheets_client.create(sheet_name).sheet1
-            # Add header row
-            sheet.append_row(['Email', 'Password', 'Name', 'Is Admin', 'Created At'])
-        return sheet
-    except Exception as e:
-        print(f"Error accessing user credentials sheet: {e}")
-        return None
-
-def save_user_to_sheet(email, password, name, is_admin):
-    """Save user credentials to Google Sheet"""
-    sheet = get_user_credentials_sheet()
-    if sheet:
-        try:
-            sheet.append_row([email, password, name, str(is_admin), str(datetime.utcnow())])
-            return True
-        except Exception as e:
-            print(f"Error saving user to sheet: {e}")
-    return False
-
-def get_user_from_sheet(email):
-    """Get user credentials from Google Sheet by email"""
-    sheet = get_user_credentials_sheet()
-    if sheet:
-        try:
-            records = sheet.get_all_records()
-            for record in records:
-                if record.get('Email', '').lower() == email.lower():
-                    return {
-                        'email': record.get('Email'),
-                        'password': record.get('Password'),
-                        'name': record.get('Name'),
-                        'is_admin': record.get('Is Admin', 'False').lower() == 'true'
-                    }
-        except Exception as e:
-            print(f"Error reading user from sheet: {e}")
-    return None
+# Google Sheets functionality removed
 
 # Database Models (MongoDB)
 class User(UserMixin):
@@ -284,40 +209,12 @@ def login():
             flash('Only @cars24.com or @cariotauto.com emails are allowed', 'error')
             return render_template('login.html', form=form)
         
-        # Check Google Sheet first
-        sheet_user = get_user_from_sheet(email)
-        
         # Check MongoDB
         user = get_user_by_email(email)
         
-        if sheet_user:
-            # User exists in Google Sheet, verify password
-            if sheet_user['password'] == password:
-                # Sync to MongoDB if not exists
-                if not user:
-                    name = sheet_user['name']
-                    is_admin = sheet_user['is_admin']
-                    user_data = {
-                        'email': email,
-                        'name': name,
-                        'password': password,
-                        'is_admin': is_admin,
-                        'created_at': datetime.utcnow()
-                    }
-                    db.users.insert_one(user_data)
-                    user = get_user_by_email(email)
-                login_user(user, remember=True)
-                flash(f'Welcome, {user.name}!', 'success')
-                return redirect(url_for('index'))
-            else:
-                flash('Invalid password', 'error')
-                return render_template('login.html', form=form)
-        
         if user:
-            # User exists in MongoDB but not in Google Sheet
+            # User exists in MongoDB
             if user.password and user.password == password:
-                # Save to Google Sheet
-                save_user_to_sheet(email, password, user.name, user.is_admin)
                 login_user(user, remember=True)
                 flash(f'Welcome, {user.name}!', 'success')
                 return redirect(url_for('index'))
@@ -336,9 +233,6 @@ def login():
             'created_at': datetime.utcnow()
         }
         db.users.insert_one(user_data)
-        
-        # Save to Google Sheet
-        save_user_to_sheet(email, password, name, is_admin)
         
         user = get_user_by_email(email)
         login_user(user, remember=True)
@@ -360,11 +254,10 @@ def forgot_password():
     if form.validate_on_submit():
         email = form.email.data.lower()
         
-        # Check if user exists in Google Sheet or local database
-        sheet_user = get_user_from_sheet(email)
+        # Check if user exists in local database
         local_user = db.users.find_one({'email': email})
         
-        if sheet_user or local_user:
+        if local_user:
             # User exists, redirect to reset password
             session['reset_email'] = email
             flash('User found. Please set your new password.', 'success')
@@ -403,18 +296,6 @@ def reset_password():
                 {'email': email},
                 {'$set': {'password': new_password}}
             )
-        
-        # Update password in Google Sheet
-        sheet = get_user_credentials_sheet()
-        if sheet:
-            try:
-                records = sheet.get_all_records()
-                for i, record in enumerate(records, start=2):  # Start from row 2 (after header)
-                    if record.get('Email', '').lower() == email.lower():
-                        sheet.update_cell(i, 2, new_password)  # Column 2 is Password
-                        break
-            except Exception as e:
-                print(f"Error updating password in sheet: {e}")
         
         # Clear session
         session.pop('reset_email', None)
@@ -475,10 +356,6 @@ def participate(event_id):
             'attended': False
         }
         db.participations.insert_one(participation_data)
-        sync_to_sheet("FitPulse Participations", [
-            event_id, current_user.name, current_user.email,
-            event['title'], str(event['date']), str(datetime.utcnow())
-        ])
         if is_ajax:
             return jsonify({'success': True, 'message': f'Registered for {event["title"]}!', 'going': True})
         flash(f'Successfully registered for {event["title"]}!', 'success')
@@ -631,10 +508,6 @@ def create_event():
         result = db.events.insert_one(event_data)
         event_id = str(result.inserted_id)
         
-        sync_to_sheet("FitPulse Events", [
-            event_id, event_data['title'], event_data['event_type'],
-            str(form.date.data), str(form.time.data), event_data.get('location', ''), str(event_data['created_at'])
-        ])
         flash('Event created successfully!', 'success')
         return redirect(url_for('admin'))
     
@@ -683,10 +556,6 @@ def create_challenge():
         result = db.challenges.insert_one(challenge_data)
         challenge_id = str(result.inserted_id)
         
-        sync_to_sheet("FitPulse Challenges", [
-            challenge_id, challenge_data['name'], challenge_data['challenge_type'],
-            str(form.start_date.data), str(form.end_date.data), str(challenge_data['created_at'])
-        ])
         flash('Challenge created successfully!', 'success')
         return redirect(url_for('admin'))
     
@@ -718,10 +587,6 @@ def log_score():
         result = db.scores.insert_one(score_data)
         score_id = str(result.inserted_id)
         
-        sync_to_sheet("FitPulse Scores", [
-            score_id, user.name, user.email,
-            score_data['challenge_id'], str(score_data['value']), str(score_data['recorded_at'])
-        ])
         flash('Score logged successfully!', 'success')
         return redirect(url_for('admin'))
     
