@@ -153,52 +153,49 @@ def minval_filter(seq, cap=None):
 # Routes
 @app.route('/')
 def index():
-    if db is None:
-        return "Database connection failed. Please check configuration.", 500
-    
-    week_offset = request.args.get('week_offset', 0, type=int)
-    today = datetime.now().date()
-    base_monday = today - timedelta(days=today.weekday())
-    week_start = base_monday + timedelta(weeks=week_offset)
-    week_end = week_start + timedelta(days=4)
-    
-    # Query events from MongoDB
     try:
+        week_offset = request.args.get('week_offset', 0, type=int)
+        today = datetime.now().date()
+        base_monday = today - timedelta(days=today.weekday())
+        week_start = base_monday + timedelta(weeks=week_offset)
+        week_end = week_start + timedelta(days=4)
+        
+        # Query events from MongoDB
         events = list(db.events.find({
             'date': {'$gte': datetime.combine(week_start, time(0, 0)), '$lte': datetime.combine(week_end, time(23, 59))}
         }).sort([('date', 1), ('time', 1)]))
+        
+        # Group events by day
+        week_events = {}
+        for i in range(5):
+            day = week_start + timedelta(days=i)
+            week_events[day] = []
+        
+        for event in events:
+            event_date = event['date'].date() if isinstance(event['date'], datetime) else event['date']
+            if event_date in week_events:
+                # Load participations for this event
+                event['participations'] = list(db.participations.find({'event_id': str(event['_id'])}))
+                # Convert _id to string for template compatibility
+                event['id'] = str(event['_id'])
+                week_events[event_date].append(event)
+        
+        today_events = week_events.get(today, [])
+        active_challenges = list(db.challenges.find({'end_date': {'$gte': datetime.combine(today, time(0, 0))}}))
+        week_total = sum(len(evts) for evts in week_events.values())
+        
+        return render_template('index.html',
+            week_events=week_events,
+            week_start=week_start,
+            today_events=today_events,
+            active_challenges=active_challenges,
+            week_total=week_total,
+            datetime=datetime,
+            timedelta=timedelta
+        )
     except Exception as e:
-        print(f"Error querying events: {e}")
-        events = []
-    
-    # Group events by day
-    week_events = {}
-    for i in range(5):
-        day = week_start + timedelta(days=i)
-        week_events[day] = []
-    
-    for event in events:
-        event_date = event['date'].date() if isinstance(event['date'], datetime) else event['date']
-        if event_date in week_events:
-            # Load participations for this event
-            event['participations'] = list(db.participations.find({'event_id': str(event['_id'])}))
-            # Convert _id to string for template compatibility
-            event['id'] = str(event['_id'])
-            week_events[event_date].append(event)
-    
-    today_events = week_events.get(today, [])
-    active_challenges = list(db.challenges.find({'end_date': {'$gte': datetime.combine(today, time(0, 0))}}))
-    week_total = sum(len(evts) for evts in week_events.values())
-    
-    return render_template('index.html',
-        week_events=week_events,
-        week_start=week_start,
-        today_events=today_events,
-        active_challenges=active_challenges,
-        week_total=week_total,
-        datetime=datetime,
-        timedelta=timedelta
-    )
+        print(f"Error in index route: {e}")
+        return f"Error: {str(e)}", 500
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
