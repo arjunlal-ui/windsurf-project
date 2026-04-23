@@ -663,4 +663,5 @@ def get_unit_for_type(challenge_type):
     return units.get(challenge_type, 'points')
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5003)
+    port = int(os.environ.get('PORT', 5003))
+    app.run(debug=False, host='0.0.0.0', port=port)
