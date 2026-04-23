@@ -20,7 +20,11 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
 
 # MongoDB Configuration
 app.config['MONGO_URI'] = os.getenv('MONGO_URI', 'mongodb+srv://fitpulse:fitpulse@cluster0.hcahccp.mongodb.net/fitpulse?retryWrites=true&w=majority')
-mongo = PyMongo(app, serverSelectionTimeoutMS=5000)
+mongo = PyMongo(app, 
+    serverSelectionTimeoutMS=5000,
+    tls=True,
+    tlsAllowInvalidCertificates=True
+)
 db = mongo.db
 
 csrf = CSRFProtect(app)
