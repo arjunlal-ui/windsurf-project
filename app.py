@@ -20,8 +20,15 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
 
 # MongoDB Configuration
 app.config['MONGO_URI'] = os.getenv('MONGO_URI', 'mongodb+srv://fitpulse:fitpulse@cluster0.hcahccp.mongodb.net/fitpulse?retryWrites=true&w=majority')
-mongo = PyMongo(app)
-db = mongo.db
+try:
+    mongo = PyMongo(app)
+    db = mongo.db
+    # Test connection
+    mongo.cx.admin.command('ping')
+except Exception as e:
+    print(f"MongoDB connection error: {e}")
+    mongo = None
+    db = None
 
 csrf = CSRFProtect(app)
 login_manager = LoginManager()
@@ -153,6 +160,9 @@ def minval_filter(seq, cap=None):
 # Routes
 @app.route('/')
 def index():
+    if db is None:
+        return "Database connection failed. Please check configuration.", 500
+    
     week_offset = request.args.get('week_offset', 0, type=int)
     today = datetime.now().date()
     base_monday = today - timedelta(days=today.weekday())
@@ -160,9 +170,13 @@ def index():
     week_end = week_start + timedelta(days=4)
     
     # Query events from MongoDB
-    events = list(db.events.find({
-        'date': {'$gte': datetime.combine(week_start, time(0, 0)), '$lte': datetime.combine(week_end, time(23, 59))}
-    }).sort([('date', 1), ('time', 1)]))
+    try:
+        events = list(db.events.find({
+            'date': {'$gte': datetime.combine(week_start, time(0, 0)), '$lte': datetime.combine(week_end, time(23, 59))}
+        }).sort([('date', 1), ('time', 1)]))
+    except Exception as e:
+        print(f"Error querying events: {e}")
+        events = []
     
     # Group events by day
     week_events = {}
