@@ -20,11 +20,7 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
 
 # MongoDB Configuration
 app.config['MONGO_URI'] = os.getenv('MONGO_URI', 'mongodb+srv://fitpulse:fitpulse@cluster0.hcahccp.mongodb.net/fitpulse?retryWrites=true&w=majority')
-mongo = PyMongo(app, 
-    serverSelectionTimeoutMS=5000,
-    tls=True,
-    tlsAllowInvalidCertificates=True
-)
+mongo = PyMongo(app, serverSelectionTimeoutMS=10000)
 db = mongo.db
 
 csrf = CSRFProtect(app)
@@ -155,6 +151,10 @@ def minval_filter(seq, cap=None):
     return val
 
 # Routes
+@app.route('/health')
+def health():
+    return "OK", 200
+
 @app.route('/')
 def index():
     try:
