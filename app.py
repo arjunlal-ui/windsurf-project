@@ -20,8 +20,16 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
 
 # MongoDB Configuration
 app.config['MONGO_URI'] = os.getenv('MONGO_URI', 'mongodb+srv://fitpulse:fitpulse@cluster0.hcahccp.mongodb.net/fitpulse?retryWrites=true&w=majority&tls=true&tlsAllowInvalidCertificates=true')
-mongo = PyMongo(app, serverSelectionTimeoutMS=5000)
-db = mongo.db
+try:
+    mongo = PyMongo(app, serverSelectionTimeoutMS=5000)
+    db = mongo.db
+    # Test connection
+    mongo.cx.admin.command('ping')
+    print("MongoDB connected successfully")
+except Exception as e:
+    print(f"MongoDB connection failed: {e}")
+    mongo = None
+    db = None
 
 csrf = CSRFProtect(app)
 login_manager = LoginManager()
