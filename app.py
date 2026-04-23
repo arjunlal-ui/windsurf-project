@@ -19,6 +19,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
 
 # MongoDB Configuration
+# Default to local MongoDB for development, use MONGO_URI env var for production
 app.config['MONGO_URI'] = os.getenv('MONGO_URI', 'mongodb://localhost:27017/fitpulse')
 mongo = PyMongo(app, serverSelectionTimeoutMS=10000)
 db = mongo.db
